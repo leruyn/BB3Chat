@@ -47,11 +47,13 @@ internal object MessageFirestoreJson {
         content: MessageContent,
         destructConfig: DestructConfig?,
         senderAlias: String,
+        senderUid: String,
         sentAt: Long
     ): String = buildJsonObject {
         put("id", id)
         put("roomId", roomId)
         put("senderAlias", senderAlias)
+        put("senderUid", senderUid)
         put("contentType", content.typeName())
         put("sentAt", sentAt)
         put("serverAt", SERVER_TIMESTAMP)

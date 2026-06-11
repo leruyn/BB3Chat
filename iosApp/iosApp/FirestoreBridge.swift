@@ -30,7 +30,10 @@ final class FirestoreBridge {
                         }
                         onUpdate(str)
                     }
-                return { reg.remove() }
+                return {
+                    reg.remove()
+                    return KotlinUnit()
+                }
             },
             sendMessage: { roomId, messageId, payloadJson, onSuccess, onError in
                 guard let payloadData = payloadJson.data(using: .utf8),
@@ -116,7 +119,7 @@ final class FirestoreBridge {
             fetchRecentMessages: { roomId, limit, onResult, onError in
                 self.db.collection("rooms/\(roomId)/messages")
                     .order(by: "sentAt", descending: true)
-                    .limit(to: limit)
+                    .limit(to: limit.intValue)
                     .getDocuments { snapshot, err in
                         if let err { onError(err.localizedDescription); return }
                         let arr = snapshot?.documents.map { $0.toJsonDict() } ?? []
@@ -127,6 +130,147 @@ final class FirestoreBridge {
                         }
                         onResult(str)
                     }
+            },
+            registerPairingHost: { hostCode, hostUid, onSuccess, onError in
+                self.db.collection("pairing_sessions").document(hostCode).setData([
+                    "hostUid": hostUid,
+                    "status": "WAITING",
+                    "createdAt": FieldValue.serverTimestamp()
+                ]) { err in
+                    if let err { onError(err.localizedDescription) }
+                    else { onSuccess() }
+                }
+            },
+            announcePairingJoin: { hostCode, peerCode, roomId, joinerUid, onSuccess, onError in
+                self.db.collection("pairing_sessions").document(hostCode).updateData([
+                    "peerCode": peerCode,
+                    "roomId": roomId,
+                    "joinerUid": joinerUid,
+                    "status": "CONNECTED",
+                    "connectedAt": FieldValue.serverTimestamp()
+                ]) { err in
+                    if let err { onError(err.localizedDescription) }
+                    else { onSuccess() }
+                }
+            },
+            observePairingSession: { hostCode, onUpdate in
+                let reg = self.db.collection("pairing_sessions").document(hostCode)
+                    .addSnapshotListener { snapshot, error in
+                        if error != nil {
+                            onUpdate("null")
+                            return
+                        }
+                        guard let snapshot, snapshot.exists, let data = snapshot.data() else {
+                            onUpdate("null")
+                            return
+                        }
+                        var dict = data.mapValues { jsonSafe($0) }
+                        dict["id"] = snapshot.documentID
+                        guard let jsonData = try? JSONSerialization.data(withJSONObject: dict),
+                              let str = String(data: jsonData, encoding: .utf8) else {
+                            onUpdate("null")
+                            return
+                        }
+                        onUpdate(str)
+                    }
+                return {
+                    reg.remove()
+                    return KotlinUnit()
+                }
+            },
+            clearPairingSession: { hostCode, onSuccess, onError in
+                self.db.collection("pairing_sessions").document(hostCode).delete { err in
+                    if let err { onError(err.localizedDescription) }
+                    else { onSuccess() }
+                }
+            },
+            getPairingSessionJson: { hostCode, onResult, onError in
+                self.db.collection("pairing_sessions").document(hostCode).getDocument { doc, err in
+                    if let err { onError(err.localizedDescription); return }
+                    guard let doc, doc.exists, let data = doc.data() else {
+                        onResult("null")
+                        return
+                    }
+                    var dict = data.mapValues { jsonSafe($0) }
+                    dict["id"] = doc.documentID
+                    guard let jsonData = try? JSONSerialization.data(withJSONObject: dict),
+                          let str = String(data: jsonData, encoding: .utf8) else {
+                        onResult("null")
+                        return
+                    }
+                    onResult(str)
+                }
+            },
+            createRoomCodeLobbyWaiting: { docId, uid, myCode, onSuccess, onError in
+                self.db.collection("room_code_lobby").document(docId).setData([
+                    "peer1Uid": uid,
+                    "peer1Code": myCode,
+                    "status": "WAITING",
+                    "createdAt": FieldValue.serverTimestamp()
+                ]) { err in
+                    if let err { onError(err.localizedDescription) }
+                    else { onSuccess() }
+                }
+            },
+            connectRoomCodeLobby: { docId, uid, myCode, roomId, onSuccess, onError in
+                self.db.collection("room_code_lobby").document(docId).updateData([
+                    "peer2Uid": uid,
+                    "peer2Code": myCode,
+                    "roomId": roomId,
+                    "status": "CONNECTED",
+                    "connectedAt": FieldValue.serverTimestamp()
+                ]) { err in
+                    if let err { onError(err.localizedDescription) }
+                    else { onSuccess() }
+                }
+            },
+            observeRoomCodeLobby: { docId, onUpdate in
+                let reg = self.db.collection("room_code_lobby").document(docId)
+                    .addSnapshotListener { snapshot, error in
+                        if error != nil {
+                            onUpdate("null")
+                            return
+                        }
+                        guard let snapshot, snapshot.exists, let data = snapshot.data() else {
+                            onUpdate("null")
+                            return
+                        }
+                        var dict = data.mapValues { jsonSafe($0) }
+                        dict["id"] = snapshot.documentID
+                        guard let jsonData = try? JSONSerialization.data(withJSONObject: dict),
+                              let str = String(data: jsonData, encoding: .utf8) else {
+                            onUpdate("null")
+                            return
+                        }
+                        onUpdate(str)
+                    }
+                return {
+                    reg.remove()
+                    return KotlinUnit()
+                }
+            },
+            clearRoomCodeLobby: { docId, onSuccess, onError in
+                self.db.collection("room_code_lobby").document(docId).delete { err in
+                    if let err { onError(err.localizedDescription) }
+                    else { onSuccess() }
+                }
+            },
+            getRoomCodeLobbyJson: { docId, onResult, onError in
+                self.db.collection("room_code_lobby").document(docId).getDocument { doc, err in
+                    if let err { onError(err.localizedDescription); return }
+                    guard let doc, doc.exists, let data = doc.data() else {
+                        onResult("null")
+                        return
+                    }
+                    var dict = data.mapValues { jsonSafe($0) }
+                    dict["id"] = doc.documentID
+                    guard let jsonData = try? JSONSerialization.data(withJSONObject: dict),
+                          let str = String(data: jsonData, encoding: .utf8) else {
+                        onResult("null")
+                        return
+                    }
+                    onResult(str)
+                }
             }
         )
     }

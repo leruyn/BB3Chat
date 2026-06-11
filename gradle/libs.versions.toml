@@ -13,6 +13,11 @@ datetime                = "0.6.1"
 firebase-bom            = "33.4.0"
 androidx-activity       = "1.9.2"
 androidx-core-ktx       = "1.13.1"
+zxing                   = "3.5.3"
+camerax                 = "1.4.2"
+mlkit-barcode           = "17.3.0"
+concurrent-futures        = "1.2.0"
+guava                   = "33.3.1-jre"
 
 [libraries]
 # Koin
@@ -57,6 +62,16 @@ androidx-security-crypto = { module = "androidx.security:security-crypto",      
 
 # SQLCipher (encrypted SQLite, Android only)
 sqlcipher           = { module = "net.zetetic:android-database-sqlcipher",      version = "4.5.4" }
+
+# QR / Camera (Android)
+zxing-core          = { module = "com.google.zxing:core",                       version.ref = "zxing" }
+androidx-camera-core     = { module = "androidx.camera:camera-core",            version.ref = "camerax" }
+androidx-camera-camera2  = { module = "androidx.camera:camera-camera2",         version.ref = "camerax" }
+androidx-camera-lifecycle = { module = "androidx.camera:camera-lifecycle",      version.ref = "camerax" }
+androidx-camera-view     = { module = "androidx.camera:camera-view",           version.ref = "camerax" }
+mlkit-barcode-scanning   = { module = "com.google.mlkit:barcode-scanning",     version.ref = "mlkit-barcode" }
+androidx-concurrent-futures-ktx = { module = "androidx.concurrent:concurrent-futures-ktx", version.ref = "concurrent-futures" }
+guava-android           = { module = "com.google.guava:guava",                      version.ref = "guava" }
 
 [plugins]
 androidApplication         = { id = "com.android.application",                        version.ref = "agp" }

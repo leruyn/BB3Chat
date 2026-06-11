@@ -32,7 +32,7 @@ service cloud.firestore {
 
     function hasRequiredMessageFields(data) {
       return data.keys().hasAll([
-        'id', 'roomId', 'senderAlias', 'contentType', 'sentAt', 'status'
+        'id', 'roomId', 'senderAlias', 'senderUid', 'contentType', 'sentAt', 'status'
       ]);
     }
 
@@ -97,6 +97,7 @@ service cloud.firestore {
                       && isMember(roomDoc(roomId))
                       && roomIsActive(roomDoc(roomId))
                       && hasRequiredMessageFields(request.resource.data)
+                      && request.resource.data.senderUid == request.auth.uid
                       && validContentType(request.resource.data)
                       && hasContentPayload(request.resource.data)
                       && payloadWithinSizeLimit(request.resource.data);
@@ -117,8 +118,56 @@ service cloud.firestore {
       }
     }
 
+    match /room_code_lobby/{phraseId} {
+      allow read: if isSignedIn();
+
+      allow create: if isSignedIn()
+                    && request.resource.data.peer1Uid == request.auth.uid
+                    && request.resource.data.status == 'WAITING';
+
+      allow update: if isSignedIn() && (
+        (resource.data.peer1Uid == request.auth.uid
+         && request.resource.data.status == 'WAITING')
+        ||
+        (resource.data.status == 'WAITING'
+         && request.resource.data.status == 'CONNECTED'
+         && request.resource.data.peer2Uid == request.auth.uid)
+      );
+
+      allow delete: if isSignedIn()
+                    && resource.data.peer1Uid == request.auth.uid;
+    }
+
+    match /pairing_sessions/{hostCode} {
+      allow create: if isSignedIn()
+                    && request.resource.data.hostUid == request.auth.uid
+                    && request.resource.data.status == 'WAITING';
+
+      allow read: if isSignedIn()
+                  && resource.data.hostUid == request.auth.uid;
+
+      allow update: if isSignedIn() && (
+        (resource.data.hostUid == request.auth.uid
+         && request.resource.data.status == 'WAITING')
+        ||
+        (request.resource.data.status == 'CONNECTED'
+         && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly([
+              'peerCode', 'roomId', 'joinerUid', 'status', 'connectedAt'
+            ]))
+      );
+
+      allow delete: if isSignedIn()
+                    && resource.data.hostUid == request.auth.uid;
+    }
+
     match /fcm_tokens/{uid} {
-      allow read, write: if isSignedIn() && isOwner(uid);
+      allow read: if isSignedIn() && isOwner(uid);
+      allow write: if isSignedIn()
+                   && isOwner(uid)
+                   && request.resource.data.keys().hasAll(['token', 'platform', 'updatedAt'])
+                   && request.resource.data.token is string
+                   && request.resource.data.token.size() < 500;
     }
 
     match /intruder_log/{uid}/{docId} {

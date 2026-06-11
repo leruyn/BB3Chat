@@ -85,8 +85,10 @@ class FirebaseMessageRepository(
         )
         cacheMessageLocally(pending)
 
+        val senderUid = FirebaseAuth.getInstance().currentUser?.uid
+            ?: throw IllegalStateException("Firebase Auth chưa sẵn sàng")
         val payload = buildFirestorePayload(
-            messageId, roomId, encrypted, destructConfig, senderAlias, sentAt
+            messageId, roomId, encrypted, destructConfig, senderAlias, senderUid, sentAt
         )
 
         return try {
@@ -326,12 +328,14 @@ class FirebaseMessageRepository(
         content: MessageContent,
         destructConfig: DestructConfig?,
         senderAlias: String,
+        senderUid: String,
         sentAt: Long
     ): Map<String, Any?> {
         val base = mutableMapOf<String, Any?>(
             "id"          to id,
             "roomId"      to roomId,
             "senderAlias" to senderAlias,
+            "senderUid"   to senderUid,
             "contentType" to content.typeName(),
             "sentAt"      to com.google.firebase.Timestamp(sentAt / 1000, ((sentAt % 1000) * 1_000_000).toInt()),
             "serverAt"    to com.google.firebase.firestore.FieldValue.serverTimestamp(),

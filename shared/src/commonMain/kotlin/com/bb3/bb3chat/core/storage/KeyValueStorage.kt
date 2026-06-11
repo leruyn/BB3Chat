@@ -31,6 +31,7 @@ object StorageKeys {
     const val DEADMAN_ENABLED     = "deadman_enabled"
     const val DEADMAN_TRIGGER_MS  = "deadman_trigger_ms"
     const val ONBOARDING_DONE     = "onboarding_done"
+    const val PROFILE_CONFIGURED  = "profile_configured"
 
     // Safe Hours
     const val SAFE_HOURS_ENABLED  = "safe_hours_enabled"
@@ -48,4 +49,9 @@ object StorageKeys {
     const val INTRUDER_LAST_TS         = "intruder_last_ts"
     const val INTRUDER_ATTEMPT_COUNT   = "intruder_attempt_count"
     const val INTRUDER_SEEN            = "intruder_seen"
+
+    // Fake push / dead-man
+    const val FAKE_PUSH_ENABLED        = "fake_push_enabled"
+    const val LAST_ACTIVITY_MS         = "last_activity_ms"
+    const val SCHEDULED_MESSAGES_JSON  = "scheduled_messages_json"
 }

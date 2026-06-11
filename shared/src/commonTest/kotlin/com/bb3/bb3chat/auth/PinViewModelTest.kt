@@ -1,6 +1,10 @@
 package com.bb3.bb3chat.auth
 
 import com.bb3.bb3chat.core.crypto.CryptoManager
+import com.bb3.bb3chat.core.disguise.DisguiseConfig
+import com.bb3.bb3chat.core.platform.IntruderCapture
+import com.bb3.bb3chat.core.storage.KeyValueStorage
+import com.bb3.bb3chat.core.vip.VipEntitlements
 import com.bb3.bb3chat.feature.auth.domain.model.PinValidationResult
 import com.bb3.bb3chat.feature.auth.domain.repository.PinAuthRepository
 import com.bb3.bb3chat.feature.auth.domain.usecase.SetupPinUseCase
@@ -32,18 +36,25 @@ class PinViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var repository: FakePinAuthRepository
+    private lateinit var disguiseConfig: DisguiseConfig
     private lateinit var viewModel: PinViewModel
 
     @BeforeTest
     fun setup() {
         Dispatchers.setMain(testDispatcher)
         repository = FakePinAuthRepository()
-        viewModel = PinViewModel(
-            validatePin = ValidatePinUseCase(repository),
-            setupPin = SetupPinUseCase(repository),
-            repository = repository
-        )
+        disguiseConfig = DisguiseConfig(FakeKeyValueStorage())
+        viewModel = createViewModel()
     }
+
+    private fun createViewModel() = PinViewModel(
+        validatePin = ValidatePinUseCase(repository),
+        setupPin = SetupPinUseCase(repository),
+        repository = repository,
+        disguiseConfig = disguiseConfig,
+        intruderCapture = FakeIntruderCapture(),
+        vipEntitlements = VipEntitlements(FakeKeyValueStorage())
+    )
 
     @AfterTest
     fun tearDown() {
@@ -80,11 +91,7 @@ class PinViewModelTest {
         assertTrue(repository.hasPendingRealPin())
 
         viewModel.onCleared()
-        viewModel = PinViewModel(
-            validatePin = ValidatePinUseCase(repository),
-            setupPin = SetupPinUseCase(repository),
-            repository = repository
-        )
+        viewModel = createViewModel()
         advanceUntilIdle()
 
         assertEquals(SetupStep.CONFIRM_REAL, viewModel.state.value.setupStep)
@@ -173,6 +180,25 @@ private class FakePinAuthRepository : PinAuthRepository {
     override fun isPinConfigured(): Boolean = realPin != null
 
     override fun isDecoyPinConfigured(): Boolean = decoyPin != null
+}
+
+private class FakeIntruderCapture : IntruderCapture {
+    override suspend fun capture(attemptCount: Int) {}
+}
+
+private class FakeKeyValueStorage : KeyValueStorage {
+    private val data = mutableMapOf<String, Any>()
+
+    override fun putString(key: String, value: String) { data[key] = value }
+    override fun getString(key: String): String? = data[key] as? String
+    override fun putLong(key: String, value: Long) { data[key] = value }
+    override fun getLong(key: String, default: Long) = data[key] as? Long ?: default
+    override fun putInt(key: String, value: Int) { data[key] = value }
+    override fun getInt(key: String, default: Int) = data[key] as? Int ?: default
+    override fun putBoolean(key: String, value: Boolean) { data[key] = value }
+    override fun getBoolean(key: String, default: Boolean) = data[key] as? Boolean ?: default
+    override fun remove(key: String) { data.remove(key) }
+    override fun clearAll() { data.clear() }
 }
 
 private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }

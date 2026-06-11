@@ -33,6 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.bb3.bb3chat.feature.security.presentation.IntruderAlertBanner
 import com.bb3.bb3chat.ui.theme.BB3Black
 import com.bb3.bb3chat.ui.theme.BB3Border
 import com.bb3.bb3chat.ui.theme.BB3Card
@@ -57,6 +58,9 @@ fun InboxScreen(
     viewModel: InboxViewModel = koinInject(),
     onOpenRoom: (String) -> Unit,
     onOpenPairing: () -> Unit = {},
+    onOpenSettings: () -> Unit = {},
+    onOpenStore: () -> Unit = {},
+    onOpenIntruderGallery: () -> Unit = {},
     onNavigateToCalculator: () -> Unit
 ) {
     val state by viewModel.state.collectAsState()
@@ -64,10 +68,12 @@ fun InboxScreen(
     LaunchedEffect(Unit) {
         viewModel.effect.collect { effect ->
             when (effect) {
-                is InboxUiEffect.NavigateToChatroom  -> onOpenRoom(effect.roomId)
-                is InboxUiEffect.NavigateToPairing   -> onOpenPairing()
-                is InboxUiEffect.NavigateToCalculator -> onNavigateToCalculator()
-                else -> {}
+                is InboxUiEffect.NavigateToChatroom   -> onOpenRoom(effect.roomId)
+                is InboxUiEffect.NavigateToPairing    -> onOpenPairing()
+                is InboxUiEffect.NavigateToSettings   -> onOpenSettings()
+                is InboxUiEffect.NavigateToStore      -> onOpenStore()
+                is InboxUiEffect.NavigateToCalculator    -> onNavigateToCalculator()
+                is InboxUiEffect.NavigateToIntruderGallery -> onOpenIntruderGallery()
             }
         }
     }
@@ -108,7 +114,13 @@ fun InboxScreen(
             }
         }
 
-        // Divider
+        IntruderAlertBanner(
+            snapshotCount = state.intruderCount,
+            visible       = state.showIntruderBanner,
+            onView        = { viewModel.handleEvent(InboxUiEvent.ViewIntruderGallery) },
+            onDismiss     = { viewModel.handleEvent(InboxUiEvent.DismissIntruderBanner) }
+        )
+
         Box(Modifier.fillMaxWidth().height(0.5.dp).background(BB3Border))
 
         if (state.isLoading) {

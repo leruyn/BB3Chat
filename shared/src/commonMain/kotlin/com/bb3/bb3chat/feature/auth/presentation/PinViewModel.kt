@@ -1,6 +1,11 @@
 package com.bb3.bb3chat.feature.auth.presentation
 
+import com.bb3.bb3chat.core.disguise.DisguiseConfig
+import com.bb3.bb3chat.core.platform.IntruderCapture
+import com.bb3.bb3chat.core.vip.VipEntitlements
 import com.bb3.bb3chat.feature.auth.domain.model.PinValidationResult
+import com.bb3.bb3chat.feature.security.domain.usecase.CaptureIntruderUseCase
+import kotlinx.coroutines.launch
 import com.bb3.bb3chat.feature.auth.domain.repository.PinAuthRepository
 import com.bb3.bb3chat.feature.auth.domain.usecase.SetupPinUseCase
 import com.bb3.bb3chat.feature.auth.domain.usecase.ValidatePinUseCase
@@ -12,7 +17,10 @@ private const val PIN_LENGTH = 4
 class PinViewModel(
     private val validatePin: ValidatePinUseCase,
     private val setupPin: SetupPinUseCase,
-    private val repository: PinAuthRepository
+    private val repository: PinAuthRepository,
+    private val disguiseConfig: DisguiseConfig,
+    private val intruderCapture: IntruderCapture,
+    private val vipEntitlements: VipEntitlements
 ) : BaseViewModel<PinUiState, PinUiEvent, PinUiEffect>(
     PinUiState(isSetupMode = false)
 ) {
@@ -76,7 +84,13 @@ class PinViewModel(
 
         when (currentState.setupStep) {
             SetupStep.ENTER_REAL -> {
-                repository.savePendingRealPin(pin)
+                try {
+                    repository.savePendingRealPin(pin)
+                } catch (e: Exception) {
+                    emitEffect(PinUiEffect.ShowError("Không thể lưu PIN — thử lại"))
+                    triggerError()
+                    return
+                }
                 updateState {
                     copy(
                         pendingRealPin = pin,
@@ -86,7 +100,13 @@ class PinViewModel(
                 }
             }
             SetupStep.CONFIRM_REAL -> {
-                val confirmed = repository.confirmPendingRealPin(pin)
+                val confirmed = try {
+                    repository.confirmPendingRealPin(pin)
+                } catch (e: Exception) {
+                    emitEffect(PinUiEffect.ShowError("Không thể xác nhận PIN — thử lại"))
+                    triggerError()
+                    return
+                }
                 if (!confirmed) {
                     triggerError()
                     return
@@ -107,6 +127,7 @@ class PinViewModel(
                 }
                 try {
                     setupPin.setDecoyPin(pin)
+                    disguiseConfig.ensureDefaultSecretCode()
                     finishSetup(realPin)
                 } catch (e: Exception) {
                     triggerError()
@@ -139,7 +160,16 @@ class PinViewModel(
     }
 
     private suspend fun triggerError() {
-        updateState { copy(shakeError = true, enteredDigits = "", wrongAttempts = wrongAttempts + 1) }
+        val nextAttempts = currentState.wrongAttempts + 1
+        updateState { copy(shakeError = true, enteredDigits = "", wrongAttempts = nextAttempts) }
+        if (!currentState.isSetupMode &&
+            vipEntitlements.hasIntruderCatch() &&
+            nextAttempts >= CaptureIntruderUseCase.INTRUDER_TRIGGER_AT
+        ) {
+            scope.launch {
+                runCatching { intruderCapture.capture(nextAttempts) }
+            }
+        }
         delay(600)
         updateState { copy(shakeError = false) }
     }

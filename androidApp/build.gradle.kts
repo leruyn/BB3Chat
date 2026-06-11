@@ -60,6 +60,7 @@ dependencies {
     implementation(project(":shared"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity)
+    implementation("androidx.lifecycle:lifecycle-process:2.8.7")
     implementation(libs.koin.android)
 
     implementation(platform(libs.firebase.bom))

@@ -20,12 +20,16 @@
 	<string>1</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
 	</array>
 	<key>UILaunchScreen</key>
 	<dict/>
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<true/>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
 		<string>armv7</string>
@@ -38,5 +42,7 @@
 	<string>BB3Chat uses the camera for QR pairing.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>BB3Chat needs photo access to send images in chat.</string>
+	<key>NSUserNotificationsUsageDescription</key>
+	<string>BB3Chat hiển thị thông báo ngụy trang để bảo vệ quyền riêng tư.</string>
 </dict>
 </plist>

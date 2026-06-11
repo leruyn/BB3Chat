@@ -46,6 +46,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bb3.bb3chat.core.platform.rememberImagePicker
+import com.bb3.bb3chat.core.util.formatHourMinute
+import com.bb3.bb3chat.core.util.formatTwoDigits
 import com.bb3.bb3chat.feature.messaging.presentation.selfdestruct.SelfDestructOverlay
 import com.bb3.bb3chat.ui.components.ChatImageContent
 import com.bb3.bb3chat.ui.theme.BB3Black
@@ -118,9 +120,15 @@ fun ChatroomScreen(
                 items(state.messages, key = { it.id }) { msg ->
                     MessageBubble(
                         msg         = msg,
-                        onLongPress = { viewModel.handleEvent(ChatroomUiEvent.MessageLongPress(msg.id)) }
+                        isPlayingVoice = state.playingVoiceMsgId == msg.id,
+                        onLongPress = { viewModel.handleEvent(ChatroomUiEvent.MessageLongPress(msg.id)) },
+                        onPlayVoice = { viewModel.handleEvent(ChatroomUiEvent.PlayVoice(msg.id)) }
                     )
                 }
+            }
+
+            if (state.scheduledPending.isNotEmpty()) {
+                ScheduledPendingBar(count = state.scheduledPending.size)
             }
 
             // ── Attach preview bar ────────────────────────────────────────
@@ -139,13 +147,33 @@ fun ChatroomScreen(
             }
 
             // ── Input bar ──────────────────────────────────────────────────
-            if (state.attachPreview == null) {
+            if (state.showSchedulePanel) {
+                SchedulePanel(
+                    hour       = state.scheduleHour,
+                    minute     = state.scheduleMinute,
+                    onHour     = { viewModel.handleEvent(ChatroomUiEvent.ScheduleHourChanged(it)) },
+                    onMinute   = { viewModel.handleEvent(ChatroomUiEvent.ScheduleMinuteChanged(it)) },
+                    onConfirm  = { viewModel.handleEvent(ChatroomUiEvent.ConfirmSchedule) },
+                    onCancel   = { viewModel.handleEvent(ChatroomUiEvent.CancelSchedule) }
+                )
+            }
+
+            if (state.attachPreview == null && !state.showSchedulePanel) {
                 InputBar(
-                    text      = state.inputText,
-                    isSending = state.isSending,
-                    onTextChange = { viewModel.handleEvent(ChatroomUiEvent.InputChanged(it)) },
-                    onSend    = { viewModel.handleEvent(ChatroomUiEvent.SendText) },
-                    onAttach  = pickImage
+                    text                 = state.inputText,
+                    isSending            = state.isSending,
+                    selfDestructSend     = state.selfDestructSend,
+                    selfDestructSeconds  = state.selfDestructSeconds,
+                    canCycleDestructSecs = state.selfDestructOptions.size > 1,
+                    isRecordingVoice     = state.isRecordingVoice,
+                    voiceRecordSecs      = state.voiceRecordSecs,
+                    onTextChange         = { viewModel.handleEvent(ChatroomUiEvent.InputChanged(it)) },
+                    onSend               = { viewModel.handleEvent(ChatroomUiEvent.SendText) },
+                    onAttach             = pickImage,
+                    onToggleSelfDestruct = { viewModel.handleEvent(ChatroomUiEvent.ToggleSelfDestructSend) },
+                    onCycleDestructSecs  = { viewModel.handleEvent(ChatroomUiEvent.CycleSelfDestructSeconds) },
+                    onToggleSchedule     = { viewModel.handleEvent(ChatroomUiEvent.ToggleSchedulePanel) },
+                    onToggleVoice        = { viewModel.handleEvent(ChatroomUiEvent.ToggleVoiceRecord) }
                 )
             }
         }
@@ -215,7 +243,12 @@ private fun ChatroomTopBar(
 
 @Composable
 @OptIn(ExperimentalFoundationApi::class)
-private fun MessageBubble(msg: UiMessage, onLongPress: () -> Unit) {
+private fun MessageBubble(
+    msg: UiMessage,
+    isPlayingVoice: Boolean,
+    onLongPress: () -> Unit,
+    onPlayVoice: () -> Unit
+) {
     val isMe   = msg.isMine
     val align  = if (isMe) Alignment.End else Alignment.Start
     val bgCol  = if (isMe) BB3Primary else BB3Card
@@ -267,10 +300,13 @@ private fun MessageBubble(msg: UiMessage, onLongPress: () -> Unit) {
                     )
                 }
                 is UiMessageContent.Voice -> {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("🎙", fontSize = 18.sp)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clickable(onClick = onPlayVoice)
+                    ) {
+                        Text(if (isPlayingVoice) "⏸" else "▶", fontSize = 16.sp, color = txtCol)
                         Spacer(Modifier.width(6.dp))
-                        Text("${content.durationSecs}s", color = txtCol, fontSize = 14.sp)
+                        Text("🎙 ${content.durationSecs}s", color = txtCol, fontSize = 14.sp)
                     }
                 }
                 else -> {}
@@ -305,20 +341,146 @@ private fun MessageBubble(msg: UiMessage, onLongPress: () -> Unit) {
 // ─────────────────────────── Input Bar ──────────────────────────────────────
 
 @Composable
-private fun InputBar(
-    text        : String,
-    isSending   : Boolean,
-    onTextChange: (String) -> Unit,
-    onSend      : () -> Unit,
-    onAttach    : () -> Unit
+private fun ScheduledPendingBar(count: Int) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .background(BB3Card)
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+    ) {
+        Text("⏳ $count tin chờ gửi", color = BB3TextSec, fontSize = 12.sp)
+    }
+}
+
+@Composable
+private fun SchedulePanel(
+    hour: Int,
+    minute: Int,
+    onHour: (Int) -> Unit,
+    onMinute: (Int) -> Unit,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit
 ) {
-    Row(
+    Column(
         Modifier
             .fillMaxWidth()
             .background(BB3Surface)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.Bottom
+            .padding(16.dp)
     ) {
+        Text("Hẹn giờ gửi", color = BB3TextPrim, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.height(12.dp))
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ScheduleStepper("Giờ", hour, onHour)
+            Text(":", color = BB3TextPrim, fontSize = 24.sp)
+            ScheduleStepper("Phút", minute, onMinute, step = { (it + 5) % 60 })
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Gửi lúc ${formatHourMinute(hour, minute)}",
+            color = BB3TextSec,
+            fontSize = 13.sp
+        )
+        Spacer(Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(
+                Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(BB3Card)
+                    .clickable(onClick = onCancel)
+                    .padding(vertical = 12.dp),
+                contentAlignment = Alignment.Center
+            ) { Text("Huỷ", color = BB3TextSec) }
+            Box(
+                Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(BB3Primary)
+                    .clickable(onClick = onConfirm)
+                    .padding(vertical = 12.dp),
+                contentAlignment = Alignment.Center
+            ) { Text("Xác nhận", color = Color.Black, fontWeight = FontWeight.SemiBold) }
+        }
+    }
+}
+
+@Composable
+private fun ScheduleStepper(
+    label: String,
+    value: Int,
+    onChange: (Int) -> Unit,
+    step: (Int) -> Int = { (it + 1) % if (label == "Giờ") 24 else 60 }
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(label, color = BB3TextSec, fontSize = 12.sp)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("−", Modifier.clickable { onChange((value - 1).coerceAtLeast(0)) }, color = BB3Primary, fontSize = 20.sp)
+            Text(
+                if (label == "Giờ") formatTwoDigits(value) else formatTwoDigits(value),
+                color = BB3TextPrim,
+                fontSize = 22.sp,
+                modifier = Modifier.padding(horizontal = 12.dp)
+            )
+            Text("+", Modifier.clickable { onChange(step(value)) }, color = BB3Primary, fontSize = 20.sp)
+        }
+    }
+}
+
+@Composable
+private fun InputBar(
+    text                 : String,
+    isSending            : Boolean,
+    selfDestructSend     : Boolean,
+    selfDestructSeconds  : Int,
+    canCycleDestructSecs : Boolean,
+    isRecordingVoice     : Boolean,
+    voiceRecordSecs      : Int,
+    onTextChange         : (String) -> Unit,
+    onSend               : () -> Unit,
+    onAttach             : () -> Unit,
+    onToggleSelfDestruct : () -> Unit,
+    onCycleDestructSecs  : () -> Unit,
+    onToggleSchedule     : () -> Unit,
+    onToggleVoice        : () -> Unit
+) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .background(BB3Surface)
+            .padding(horizontal = 12.dp, vertical = 10.dp)
+    ) {
+        if (selfDestructSend) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("💣 Tin tự huỷ sau ${selfDestructSeconds}s", color = BB3Danger, fontSize = 12.sp)
+                if (canCycleDestructSecs) {
+                    Text(
+                        "Đổi thời gian",
+                        color    = BB3Primary,
+                        fontSize = 12.sp,
+                        modifier = Modifier.clickable(onClick = onCycleDestructSecs)
+                    )
+                }
+            }
+        }
+        if (isRecordingVoice) {
+            Text(
+                "🔴 Đang ghi... ${voiceRecordSecs}s / 30s",
+                color = BB3Danger,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+        }
+        Row(verticalAlignment = Alignment.Bottom) {
         // Attach button
         Box(
             Modifier
@@ -354,9 +516,47 @@ private fun InputBar(
             )
         }
 
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(6.dp))
 
-        // Send button
+        Box(
+            Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(if (isRecordingVoice) BB3Danger.copy(alpha = 0.35f) else BB3Card)
+                .clickable(onClick = onToggleVoice),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("🎙", fontSize = 14.sp)
+        }
+
+        Spacer(Modifier.width(6.dp))
+
+        Box(
+            Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(BB3Card)
+                .clickable(onClick = onToggleSchedule),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("⏰", fontSize = 14.sp)
+        }
+
+        Spacer(Modifier.width(6.dp))
+
+        Box(
+            Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(if (selfDestructSend) BB3Danger.copy(alpha = 0.25f) else BB3Card)
+                .clickable(onClick = onToggleSelfDestruct),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("💣", fontSize = 14.sp)
+        }
+
+        Spacer(Modifier.width(6.dp))
+
         val canSend = text.trim().isNotEmpty() && !isSending
         Box(
             Modifier
@@ -367,6 +567,7 @@ private fun InputBar(
             contentAlignment = Alignment.Center
         ) {
             Text("↑", color = if (canSend) Color.Black else BB3TextSec, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        }
         }
     }
 }

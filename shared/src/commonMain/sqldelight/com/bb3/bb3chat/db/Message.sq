@@ -93,6 +93,9 @@ DELETE FROM Message WHERE room_id = :room_id;
 deleteById:
 DELETE FROM Message WHERE id = :id;
 
+deleteAllMessages:
+DELETE FROM Message;
+
 markRead:
 UPDATE Message SET read_by_json = :read_by_json WHERE id = :id;
 

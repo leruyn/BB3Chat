@@ -60,6 +60,63 @@ object FirestoreBridgeHolder {
         onResult: (String) -> Unit,
         onError: (String) -> Unit
     ) -> Unit)? = null
+    private var registerPairingHostFn: ((
+        hostCode: String,
+        hostUid: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) -> Unit)? = null
+    private var announcePairingJoinFn: ((
+        hostCode: String,
+        peerCode: String,
+        roomId: String,
+        joinerUid: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) -> Unit)? = null
+    private var observePairingSessionFn: ((
+        hostCode: String,
+        onUpdate: (String) -> Unit
+    ) -> FirestoreCancel)? = null
+    private var clearPairingSessionFn: ((
+        hostCode: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) -> Unit)? = null
+    private var getPairingSessionJsonFn: ((
+        hostCode: String,
+        onResult: (String) -> Unit,
+        onError: (String) -> Unit
+    ) -> Unit)? = null
+    private var createRoomCodeLobbyWaitingFn: ((
+        docId: String,
+        uid: String,
+        myCode: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) -> Unit)? = null
+    private var connectRoomCodeLobbyFn: ((
+        docId: String,
+        uid: String,
+        myCode: String,
+        roomId: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) -> Unit)? = null
+    private var observeRoomCodeLobbyFn: ((
+        docId: String,
+        onUpdate: (String) -> Unit
+    ) -> FirestoreCancel)? = null
+    private var clearRoomCodeLobbyFn: ((
+        docId: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) -> Unit)? = null
+    private var getRoomCodeLobbyJsonFn: ((
+        docId: String,
+        onResult: (String) -> Unit,
+        onError: (String) -> Unit
+    ) -> Unit)? = null
 
     fun register(
         observeMessages: (String, (String) -> Unit) -> FirestoreCancel,
@@ -117,6 +174,63 @@ object FirestoreBridgeHolder {
             limit: Int,
             onResult: (String) -> Unit,
             onError: (String) -> Unit
+        ) -> Unit,
+        registerPairingHost: (
+            hostCode: String,
+            hostUid: String,
+            onSuccess: () -> Unit,
+            onError: (String) -> Unit
+        ) -> Unit,
+        announcePairingJoin: (
+            hostCode: String,
+            peerCode: String,
+            roomId: String,
+            joinerUid: String,
+            onSuccess: () -> Unit,
+            onError: (String) -> Unit
+        ) -> Unit,
+        observePairingSession: (
+            hostCode: String,
+            onUpdate: (String) -> Unit
+        ) -> FirestoreCancel,
+        clearPairingSession: (
+            hostCode: String,
+            onSuccess: () -> Unit,
+            onError: (String) -> Unit
+        ) -> Unit,
+        getPairingSessionJson: (
+            hostCode: String,
+            onResult: (String) -> Unit,
+            onError: (String) -> Unit
+        ) -> Unit,
+        createRoomCodeLobbyWaiting: (
+            docId: String,
+            uid: String,
+            myCode: String,
+            onSuccess: () -> Unit,
+            onError: (String) -> Unit
+        ) -> Unit,
+        connectRoomCodeLobby: (
+            docId: String,
+            uid: String,
+            myCode: String,
+            roomId: String,
+            onSuccess: () -> Unit,
+            onError: (String) -> Unit
+        ) -> Unit,
+        observeRoomCodeLobby: (
+            docId: String,
+            onUpdate: (String) -> Unit
+        ) -> FirestoreCancel,
+        clearRoomCodeLobby: (
+            docId: String,
+            onSuccess: () -> Unit,
+            onError: (String) -> Unit
+        ) -> Unit,
+        getRoomCodeLobbyJson: (
+            docId: String,
+            onResult: (String) -> Unit,
+            onError: (String) -> Unit
         ) -> Unit
     ) {
         observeFn = observeMessages
@@ -129,6 +243,16 @@ object FirestoreBridgeHolder {
         markReadFn = markMessageRead
         deleteMsgFn = deleteMessage
         fetchRecentFn = fetchRecentMessages
+        registerPairingHostFn = registerPairingHost
+        announcePairingJoinFn = announcePairingJoin
+        observePairingSessionFn = observePairingSession
+        clearPairingSessionFn = clearPairingSession
+        getPairingSessionJsonFn = getPairingSessionJson
+        createRoomCodeLobbyWaitingFn = createRoomCodeLobbyWaiting
+        connectRoomCodeLobbyFn = connectRoomCodeLobby
+        observeRoomCodeLobbyFn = observeRoomCodeLobby
+        clearRoomCodeLobbyFn = clearRoomCodeLobby
+        getRoomCodeLobbyJsonFn = getRoomCodeLobbyJson
     }
 
     fun observeMessages(roomId: String, onUpdate: (String) -> Unit): FirestoreCancel =
@@ -223,6 +347,95 @@ object FirestoreBridgeHolder {
         onError: (String) -> Unit
     ) {
         fetchRecentFn?.invoke(roomId, limit, onResult, onError)
+            ?: onError("FirestoreBridge chưa đăng ký")
+    }
+
+    fun registerPairingHost(
+        hostCode: String,
+        hostUid: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        registerPairingHostFn?.invoke(hostCode, hostUid, onSuccess, onError)
+            ?: onError("FirestoreBridge chưa đăng ký")
+    }
+
+    fun announcePairingJoin(
+        hostCode: String,
+        peerCode: String,
+        roomId: String,
+        joinerUid: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        announcePairingJoinFn?.invoke(hostCode, peerCode, roomId, joinerUid, onSuccess, onError)
+            ?: onError("FirestoreBridge chưa đăng ký")
+    }
+
+    fun observePairingSession(hostCode: String, onUpdate: (String) -> Unit): FirestoreCancel =
+        observePairingSessionFn?.invoke(hostCode, onUpdate)
+            ?: error("FirestoreBridge chưa đăng ký")
+
+    fun clearPairingSession(
+        hostCode: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        clearPairingSessionFn?.invoke(hostCode, onSuccess, onError)
+            ?: onError("FirestoreBridge chưa đăng ký")
+    }
+
+    fun getPairingSessionJson(
+        hostCode: String,
+        onResult: (String) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        getPairingSessionJsonFn?.invoke(hostCode, onResult, onError)
+            ?: onError("FirestoreBridge chưa đăng ký")
+    }
+
+    fun createRoomCodeLobbyWaiting(
+        docId: String,
+        uid: String,
+        myCode: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        createRoomCodeLobbyWaitingFn?.invoke(docId, uid, myCode, onSuccess, onError)
+            ?: onError("FirestoreBridge chưa đăng ký")
+    }
+
+    fun connectRoomCodeLobby(
+        docId: String,
+        uid: String,
+        myCode: String,
+        roomId: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        connectRoomCodeLobbyFn?.invoke(docId, uid, myCode, roomId, onSuccess, onError)
+            ?: onError("FirestoreBridge chưa đăng ký")
+    }
+
+    fun observeRoomCodeLobby(docId: String, onUpdate: (String) -> Unit): FirestoreCancel =
+        observeRoomCodeLobbyFn?.invoke(docId, onUpdate)
+            ?: error("FirestoreBridge chưa đăng ký")
+
+    fun clearRoomCodeLobby(
+        docId: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        clearRoomCodeLobbyFn?.invoke(docId, onSuccess, onError)
+            ?: onError("FirestoreBridge chưa đăng ký")
+    }
+
+    fun getRoomCodeLobbyJson(
+        docId: String,
+        onResult: (String) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        getRoomCodeLobbyJsonFn?.invoke(docId, onResult, onError)
             ?: onError("FirestoreBridge chưa đăng ký")
     }
 }

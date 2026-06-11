@@ -16,6 +16,10 @@ import shared
             guard let rid = roomId else { return }
             destroyRoomLocally(roomId: rid)
             deactivateRoom(roomId: rid)
+        case "NEW_MESSAGE":
+            Task {
+                try? await PushBridge.shared.onNewMessagePush()
+            }
         default:
             break
         }
@@ -24,11 +28,11 @@ import shared
     private static func destroyRoomLocally(roomId: String) {
         // Bridge sang KMP SessionManager qua shared framework
         guard let db = SessionManagerHolder.shared.database else { return }
-        db.messageQueries.deleteByRoomId(roomId: roomId)
+        db.messageQueries.deleteByRoomId(room_id: roomId)
     }
 
     private static func deactivateRoom(roomId: String) {
         guard let db = SessionManagerHolder.shared.database else { return }
-        db.chatRoomQueries.deactivateRoom(roomId: roomId)
+        db.chatRoomQueries.deactivateRoom(room_id: roomId)
     }
 }

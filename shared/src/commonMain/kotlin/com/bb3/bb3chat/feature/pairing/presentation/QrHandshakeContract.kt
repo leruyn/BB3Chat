@@ -4,22 +4,36 @@ import com.bb3.bb3chat.presentation.base.UiEffect
 import com.bb3.bb3chat.presentation.base.UiEvent
 import com.bb3.bb3chat.presentation.base.UiState
 
+enum class HubTab { ROOM_CODE, QR, MY_ID }
+
 data class QrHandshakeUiState(
-    val myRoomCode   : String  = "",      // 8-char alphanumeric code để peer scan
-    val qrBitmap     : Any?    = null,    // platform-specific QR bitmap (expect/actual)
-    val scanMode     : Boolean = false,   // true = camera scanner active
-    val scannedCode  : String  = "",
-    val isConnecting : Boolean = false,
-    val error        : String? = null
+    val hubTab             : HubTab  = HubTab.QR,
+    val myRoomCode         : String  = "",
+    val qrImageBytes       : ByteArray? = null,
+    val scanMode           : Boolean = false,
+    val scannedCode        : String  = "",
+    val roomPhrase         : String  = "",
+    val isRoomMatching     : Boolean = false,
+    val roomMatchSecondsLeft: Int    = 0,
+    val userAlias          : String  = "",
+    val isConnecting       : Boolean = false,
+    val isWaitingForPeer   : Boolean = false,
+    val isExpired          : Boolean = false,
+    val error              : String? = null
 ) : UiState
 
 sealed class QrHandshakeUiEvent : UiEvent {
-    object GenerateCode                          : QrHandshakeUiEvent()
-    object ToggleScanMode                        : QrHandshakeUiEvent()
-    data class OnCodeScanned(val code: String)   : QrHandshakeUiEvent()
-    data class ManualCodeEntered(val code: String): QrHandshakeUiEvent()
-    object ConfirmConnect                        : QrHandshakeUiEvent()
-    object Dismiss                               : QrHandshakeUiEvent()
+    data class SelectTab(val tab: HubTab)              : QrHandshakeUiEvent()
+    data class RoomPhraseChanged(val value: String)    : QrHandshakeUiEvent()
+    object GenerateRoomPhrase                          : QrHandshakeUiEvent()
+    object StartRoomCodeMatch                          : QrHandshakeUiEvent()
+    object CancelRoomCodeMatch                         : QrHandshakeUiEvent()
+    object GenerateCode                                : QrHandshakeUiEvent()
+    object ToggleScanMode                              : QrHandshakeUiEvent()
+    data class OnCodeScanned(val code: String)         : QrHandshakeUiEvent()
+    data class ManualCodeEntered(val code: String)     : QrHandshakeUiEvent()
+    object ConfirmConnect                              : QrHandshakeUiEvent()
+    object Dismiss                                     : QrHandshakeUiEvent()
 }
 
 sealed class QrHandshakeUiEffect : UiEffect {

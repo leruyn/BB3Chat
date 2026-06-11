@@ -1,20 +1,36 @@
 package com.bb3.bb3chat.feature.messaging.presentation.inbox
 
+import com.bb3.bb3chat.core.security.SecurityPreferences
+import com.bb3.bb3chat.core.security.SafeHoursSession
 import com.bb3.bb3chat.feature.messaging.domain.model.InboxRoom
 import com.bb3.bb3chat.feature.messaging.domain.repository.RoomRepository
-import com.bb3.bb3chat.feature.security.domain.usecase.TriggerLocalPanicUseCase
+import com.bb3.bb3chat.feature.security.domain.usecase.CaptureIntruderUseCase
+import com.bb3.bb3chat.feature.security.domain.usecase.ExecutePanicUseCase
 import com.bb3.bb3chat.presentation.base.BaseViewModel
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 
 class InboxViewModel(
     private val roomRepository: RoomRepository,
-    private val triggerPanic: TriggerLocalPanicUseCase
+    private val executePanic: ExecutePanicUseCase,
+    private val captureIntruder: CaptureIntruderUseCase,
+    private val securityPrefs: SecurityPreferences
 ) : BaseViewModel<InboxUiState, InboxUiEvent, InboxUiEffect>(InboxUiState()) {
 
     init {
+        refreshIntruderBanner()
         observeRooms()
         refreshInbox()
+    }
+
+    private fun refreshIntruderBanner() {
+        val count = captureIntruder.snapshotCount()
+        updateState {
+            copy(
+                intruderCount       = count,
+                showIntruderBanner  = count > 0 && !securityPrefs.isIntruderBannerSeen()
+            )
+        }
     }
 
     private fun observeRooms() {
@@ -48,8 +64,14 @@ class InboxViewModel(
             is InboxUiEvent.OpenSettings -> emitEffect(InboxUiEffect.NavigateToSettings)
             is InboxUiEvent.OpenStore    -> emitEffect(InboxUiEffect.NavigateToStore)
             is InboxUiEvent.TriggerPanic -> {
-                triggerPanic()
+                SafeHoursSession.reset()
+                executePanic()
                 emitEffect(InboxUiEffect.NavigateToCalculator)
+            }
+            is InboxUiEvent.ViewIntruderGallery -> emitEffect(InboxUiEffect.NavigateToIntruderGallery)
+            is InboxUiEvent.DismissIntruderBanner -> {
+                securityPrefs.markIntruderBannerSeen()
+                updateState { copy(showIntruderBanner = false) }
             }
         }
     }

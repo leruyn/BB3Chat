@@ -68,8 +68,10 @@ class IosFirebaseMessageRepository(
         )
         cacheMessageLocally(pending)
 
+        val senderUid = AuthBridgeHolder.getCurrentUid()
+            ?: throw IllegalStateException("Firebase Auth chưa sẵn sàng")
         val payload = MessageFirestoreJson.buildPayload(
-            messageId, roomId, encrypted, destructConfig, senderAlias, sentAt
+            messageId, roomId, encrypted, destructConfig, senderAlias, senderUid, sentAt
         )
 
         return try {

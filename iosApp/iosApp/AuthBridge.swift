@@ -10,7 +10,7 @@ final class AuthBridge {
     func registerWithKotlin() {
         AuthBridgeHolder.shared.register(
             getCurrentUid: { Auth.auth().currentUser?.uid },
-            isSignedIn: { Auth.auth().currentUser != nil },
+            isSignedIn: { KotlinBoolean(value: Auth.auth().currentUser != nil) },
             signOut: { try? Auth.auth().signOut() },
             ensureSignedIn: { onComplete, onError in
                 if Auth.auth().currentUser != nil {
@@ -19,6 +19,7 @@ final class AuthBridge {
                 }
                 Auth.auth().signInAnonymously { _, error in
                     if let error {
+                        NSLog("BB3 Firebase signInAnonymously: %@", error.localizedDescription)
                         onError(error.localizedDescription)
                     } else {
                         onComplete()

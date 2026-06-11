@@ -3,6 +3,11 @@
 package com.bb3.bb3chat.core.platform
 
 import com.bb3.bb3chat.core.crypto.CryptoManager
+import com.bb3.bb3chat.core.util.BlurHashEncoder
+import org.jetbrains.skia.Bitmap
+import org.jetbrains.skia.Canvas
+import org.jetbrains.skia.Image as SkiaImage
+import org.jetbrains.skia.Rect
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.math.min
@@ -40,7 +45,24 @@ actual class ImageProcessor actual constructor() {
         return jpeg.toByteArray()
     }
 
-    actual fun generateBlurHash(bytes: ByteArray): String = ""
+    actual fun generateBlurHash(bytes: ByteArray): String {
+        val image = SkiaImage.makeFromEncoded(bytes) ?: return ""
+        val w = 32
+        val h = 32
+        val bitmap = Bitmap()
+        bitmap.allocN32Pixels(w, h)
+        Canvas(bitmap).drawImageRect(image, Rect.makeWH(w.toFloat(), h.toFloat()))
+        val pixmap = bitmap.peekPixels() ?: return ""
+        val pixels = IntArray(w * h)
+        for (y in 0 until h) for (x in 0 until w) {
+            val color = pixmap.getColor(x, y)
+            val r = (color shr 16) and 0xFF
+            val g = (color shr 8) and 0xFF
+            val b = color and 0xFF
+            pixels[y * w + x] = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
+        }
+        return BlurHashEncoder.encode(pixels, w, h)
+    }
 
     @OptIn(ExperimentalEncodingApi::class)
     actual fun decryptAndDecode(encBase64: String, ivBase64: String, key: ByteArray): ByteArray {

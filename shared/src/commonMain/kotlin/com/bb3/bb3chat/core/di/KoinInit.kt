@@ -7,6 +7,6 @@ fun initKoin(appDeclaration: KoinApplication.() -> Unit = {}) {
     startKoin {
         appDeclaration()
         modules(coreModule, authModule, messagingModule, securityModule, tokenModule,
-                storeModule, pairingModule)
+                storeModule, settingsModule, profileModule, pairingModule)
     }
 }

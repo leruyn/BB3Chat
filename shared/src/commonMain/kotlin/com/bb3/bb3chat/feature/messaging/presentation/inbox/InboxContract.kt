@@ -8,7 +8,9 @@ data class InboxUiState(
     val rooms: List<RoomItem>  = emptyList(),
     val isLoading: Boolean     = true,
     val isSyncing: Boolean     = false,
-    val userAlias: String      = ""
+    val userAlias: String      = "",
+    val intruderCount: Int     = 0,
+    val showIntruderBanner: Boolean = false
 ) : UiState
 
 data class RoomItem(
@@ -29,6 +31,8 @@ sealed class InboxUiEvent : UiEvent {
     object OpenSettings                     : InboxUiEvent()
     object OpenStore                        : InboxUiEvent()
     object TriggerPanic                     : InboxUiEvent()
+    object ViewIntruderGallery              : InboxUiEvent()
+    object DismissIntruderBanner            : InboxUiEvent()
 }
 
 sealed class InboxUiEffect : UiEffect {
@@ -36,5 +40,6 @@ sealed class InboxUiEffect : UiEffect {
     object NavigateToPairing                            : InboxUiEffect()
     object NavigateToSettings                         : InboxUiEffect()
     object NavigateToStore                            : InboxUiEffect()
-    object NavigateToCalculator                       : InboxUiEffect()   // panic
+    object NavigateToCalculator                       : InboxUiEffect()
+    object NavigateToIntruderGallery                  : InboxUiEffect()
 }

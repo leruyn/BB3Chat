@@ -3,6 +3,7 @@ package com.bb3.bb3chat.feature.token.data
 import com.bb3.bb3chat.core.crypto.CryptoManager
 import com.bb3.bb3chat.core.storage.KeyValueStorage
 import com.bb3.bb3chat.core.storage.StorageKeys
+import com.bb3.bb3chat.feature.token.domain.repository.FcmTokenRegistrar
 import com.bb3.bb3chat.feature.token.domain.repository.TokenRepository
 import io.ktor.client.HttpClient
 import io.ktor.client.request.header
@@ -17,7 +18,8 @@ import kotlinx.datetime.Clock
 class TokenRepositoryImpl(
     private val httpClient: HttpClient,
     private val storage: KeyValueStorage,
-    private val vpsRelayUrl: String
+    private val vpsRelayUrl: String,
+    private val fcmTokenRegistrar: FcmTokenRegistrar
 ) : TokenRepository {
 
     override suspend fun onTokenRefreshed(rawToken: String) {
@@ -28,6 +30,7 @@ class TokenRepositoryImpl(
         storage.putString(StorageKeys.FCM_TOKEN_ENCRYPTED, encToken)
         storage.putString(StorageKeys.FCM_TOKEN_IV, iv)
         pushTokenToVps(encToken)
+        runCatching { fcmTokenRegistrar.registerToken(rawToken) }
     }
 
     override suspend fun sendHeartbeat() {

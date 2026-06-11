@@ -1,7 +1,6 @@
 package com.bb3.bb3chat.core.bridge
 
 import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.suspendCancellableCoroutine
 
 /** Swift Firebase Auth SDK is registered at app launch. */
@@ -34,11 +33,16 @@ object AuthBridgeHolder {
         signOutFn?.invoke()
     }
 
-    suspend fun ensureSignedIn() {
-        suspendCancellableCoroutine { cont ->
+    /** Returns false on Firebase error instead of throwing (Swift cannot catch Kotlin exceptions). */
+    suspend fun ensureSignedIn(): Boolean {
+        if (isSignedIn()) return true
+        return suspendCancellableCoroutine { cont ->
             ensureSignedInFn(
-                { cont.resume(Unit) },
-                { cont.resumeWithException(IllegalStateException(it)) }
+                { cont.resume(true) },
+                { err ->
+                    println("BB3 Firebase anonymous auth failed: $err")
+                    cont.resume(false)
+                }
             )
         }
     }

@@ -1,6 +1,7 @@
 package com.bb3.bb3chat.feature.messaging.data
 
 import com.bb3.bb3chat.core.crypto.SessionManager
+import com.bb3.bb3chat.core.platform.LockedInboxNotifier
 import com.bb3.bb3chat.feature.messaging.domain.repository.MessageRepository
 import com.bb3.bb3chat.feature.token.domain.repository.TokenRepository
 import com.google.firebase.messaging.FirebaseMessagingService
@@ -37,6 +38,8 @@ class BB3MessagingService : FirebaseMessagingService() {
                     serviceScope.launch {
                         runCatching { messageRepository.syncInboxFromRemote() }
                     }
+                } else {
+                    LockedInboxNotifier.show(this)
                 }
             }
             "TOKEN_PING" -> {
