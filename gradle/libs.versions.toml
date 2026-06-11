@@ -1,0 +1,71 @@
+[versions]
+agp                     = "8.5.2"
+kotlin                  = "2.0.20"
+ksp                     = "2.0.20-1.0.25"
+compose-multiplatform   = "1.7.0"
+koin                    = "3.5.6"
+koin-compose            = "1.1.5"
+ktor                    = "2.3.12"
+sqldelight              = "2.0.2"
+coroutines              = "1.8.1"
+serialization           = "1.7.3"
+datetime                = "0.6.1"
+firebase-bom            = "33.4.0"
+androidx-activity       = "1.9.2"
+androidx-core-ktx       = "1.13.1"
+
+[libraries]
+# Koin
+koin-core               = { module = "io.insert-koin:koin-core",               version.ref = "koin" }
+koin-android            = { module = "io.insert-koin:koin-android",             version.ref = "koin" }
+koin-compose            = { module = "io.insert-koin:koin-compose",             version.ref = "koin-compose" }
+
+# Ktor
+ktor-client-core        = { module = "io.ktor:ktor-client-core",                version.ref = "ktor" }
+ktor-client-okhttp      = { module = "io.ktor:ktor-client-okhttp",              version.ref = "ktor" }
+ktor-client-darwin      = { module = "io.ktor:ktor-client-darwin",              version.ref = "ktor" }
+ktor-client-websockets  = { module = "io.ktor:ktor-client-websockets",          version.ref = "ktor" }
+ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
+ktor-serialization-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
+ktor-client-logging     = { module = "io.ktor:ktor-client-logging",             version.ref = "ktor" }
+
+# SQLDelight
+sqldelight-runtime      = { module = "app.cash.sqldelight:runtime",             version.ref = "sqldelight" }
+sqldelight-coroutines   = { module = "app.cash.sqldelight:coroutines-extensions", version.ref = "sqldelight" }
+sqldelight-android      = { module = "app.cash.sqldelight:android-driver",      version.ref = "sqldelight" }
+sqldelight-native       = { module = "app.cash.sqldelight:native-driver",       version.ref = "sqldelight" }
+sqldelight-sqlite-dialect = { module = "app.cash.sqldelight:sqlite-3-38-dialect", version.ref = "sqldelight" }
+
+# Kotlinx
+kotlinx-coroutines-core    = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core",    version.ref = "coroutines" }
+kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
+kotlinx-coroutines-test    = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test",    version.ref = "coroutines" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
+kotlinx-datetime           = { module = "org.jetbrains.kotlinx:kotlinx-datetime",           version.ref = "datetime" }
+
+# Firebase (Android only)
+firebase-bom        = { module = "com.google.firebase:firebase-bom",            version.ref = "firebase-bom" }
+firebase-firestore  = { module = "com.google.firebase:firebase-firestore-ktx" }
+firebase-auth       = { module = "com.google.firebase:firebase-auth-ktx" }
+firebase-messaging  = { module = "com.google.firebase:firebase-messaging-ktx" }
+firebase-storage    = { module = "com.google.firebase:firebase-storage-ktx" }
+
+# AndroidX
+androidx-core-ktx   = { module = "androidx.core:core-ktx",                     version.ref = "androidx-core-ktx" }
+androidx-activity   = { module = "androidx.activity:activity-compose",          version.ref = "androidx-activity" }
+androidx-security-crypto = { module = "androidx.security:security-crypto",      version = "1.1.0-alpha06" }
+
+# SQLCipher (encrypted SQLite, Android only)
+sqlcipher           = { module = "net.zetetic:android-database-sqlcipher",      version = "4.5.4" }
+
+[plugins]
+androidApplication         = { id = "com.android.application",                        version.ref = "agp" }
+androidLibrary             = { id = "com.android.library",                            version.ref = "agp" }
+kotlinMultiplatform        = { id = "org.jetbrains.kotlin.multiplatform",             version.ref = "kotlin" }
+kotlinAndroid              = { id = "org.jetbrains.kotlin.android",                   version.ref = "kotlin" }
+kotlinSerialization        = { id = "org.jetbrains.kotlin.plugin.serialization",      version.ref = "kotlin" }
+composeMultiplatform       = { id = "org.jetbrains.compose",                          version.ref = "compose-multiplatform" }
+composeCompiler            = { id = "org.jetbrains.kotlin.plugin.compose",            version.ref = "kotlin" }
+sqldelight                 = { id = "app.cash.sqldelight",                            version.ref = "sqldelight" }
+ksp                        = { id = "com.google.devtools.ksp",                        version.ref = "ksp" }
+googleServices             = { id = "com.google.gms.google-services",                 version = "4.4.2" }

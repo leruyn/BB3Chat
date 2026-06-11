@@ -1,0 +1,107 @@
+CREATE TABLE Message (
+    id                   TEXT    NOT NULL PRIMARY KEY,
+    room_id              TEXT    NOT NULL,
+    sender_alias         TEXT    NOT NULL,
+    sender_avatar_index  INTEGER NOT NULL DEFAULT 0,
+    content_type         TEXT    NOT NULL,           -- TEXT|IMAGE|VOICE|VIDEO|CHUNKED_FILE|STICKER|SYSTEM
+    -- TEXT
+    encrypted_body       TEXT,
+    -- IMAGE / VOICE / VIDEO / CHUNKED_FILE / STICKER (all stored as inline base64)
+    encrypted_base64     TEXT,
+    iv                   TEXT,
+    mime_type            TEXT,
+    media_width          INTEGER,
+    media_height         INTEGER,
+    media_size_bytes     INTEGER,
+    duration_ms          INTEGER,
+    blur_hash            TEXT,
+    waveform_json        TEXT,                       -- JSON float array for voice
+    -- CHUNKED_FILE extras
+    total_chunks         INTEGER,
+    chunk_collection_id  TEXT,
+    file_name            TEXT,
+    -- STICKER extras
+    pack_id              TEXT,
+    sticker_id           TEXT,
+    -- SYSTEM
+    system_event_type    TEXT,
+    system_meta_json     TEXT,
+    -- Reply
+    reply_to_id          TEXT,
+    reply_preview_json   TEXT,                       -- JSON ReplyPreview
+    -- Reactions
+    reactions_json       TEXT    NOT NULL DEFAULT '{}',
+    -- Self-destruct
+    destruct_mode        TEXT,
+    destruct_trigger_at  INTEGER,
+    destruct_countdown_s INTEGER,
+    is_destruct_triggered INTEGER NOT NULL DEFAULT 0,
+    -- Status & delivery
+    status               TEXT    NOT NULL DEFAULT 'PENDING',
+    read_by_json         TEXT    NOT NULL DEFAULT '{}',
+    -- Misc
+    sent_at              INTEGER NOT NULL,
+    server_at            INTEGER,
+    is_edited            INTEGER NOT NULL DEFAULT 0,
+    edited_at            INTEGER,
+    is_starred           INTEGER NOT NULL DEFAULT 0,
+    is_pinned            INTEGER NOT NULL DEFAULT 0,
+    is_forwarded         INTEGER NOT NULL DEFAULT 0,
+    forwarded_from_room  TEXT,
+
+    FOREIGN KEY (room_id) REFERENCES ChatRoom(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_message_room_sent ON Message(room_id, sent_at DESC);
+
+insertMessage:
+INSERT OR REPLACE INTO Message VALUES (
+    :id, :room_id, :sender_alias, :sender_avatar_index, :content_type,
+    :encrypted_body, :encrypted_base64, :iv, :mime_type,
+    :media_width, :media_height, :media_size_bytes, :duration_ms,
+    :blur_hash, :waveform_json, :total_chunks, :chunk_collection_id,
+    :file_name, :pack_id, :sticker_id, :system_event_type, :system_meta_json,
+    :reply_to_id, :reply_preview_json, :reactions_json,
+    :destruct_mode, :destruct_trigger_at, :destruct_countdown_s, :is_destruct_triggered,
+    :status, :read_by_json, :sent_at, :server_at,
+    :is_edited, :edited_at, :is_starred, :is_pinned, :is_forwarded, :forwarded_from_room
+);
+
+selectByRoom:
+SELECT * FROM Message
+WHERE room_id = :room_id AND status != 'DESTROYED'
+ORDER BY sent_at ASC;
+
+selectById:
+SELECT * FROM Message WHERE id = :id;
+
+updateStatus:
+UPDATE Message SET status = :status WHERE id = :id;
+
+markDestroyed:
+UPDATE Message
+SET status = 'DESTROYED',
+    encrypted_body   = NULL,
+    encrypted_base64 = NULL,
+    iv               = NULL,
+    is_destruct_triggered = 1
+WHERE id = :id;
+
+deleteByRoomId:
+DELETE FROM Message WHERE room_id = :room_id;
+
+deleteById:
+DELETE FROM Message WHERE id = :id;
+
+markRead:
+UPDATE Message SET read_by_json = :read_by_json WHERE id = :id;
+
+updateServerTimestamp:
+UPDATE Message SET server_at = :server_at, status = 'SENT' WHERE id = :id;
+
+getPendingDestruct:
+SELECT * FROM Message
+WHERE destruct_mode IS NOT NULL
+  AND is_destruct_triggered = 0
+  AND destruct_trigger_at IS NOT NULL
+  AND destruct_trigger_at <= :now_ms;

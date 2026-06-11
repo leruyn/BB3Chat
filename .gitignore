@@ -1,0 +1,27 @@
+# Gradle
+.gradle/
+build/
+**/build/
+
+# Local config — never commit
+local.properties
+*.keystore
+*.jks
+
+# Android
+androidApp/google-services.json
+
+# iOS
+iosApp/Pods/
+iosApp/*.xcworkspace/xcuserdata/
+iosApp/**/GoogleService-Info.plist
+iosApp/Podfile.lock
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+.claude/
+.cursor/
+.codegraph/
+.kotlin/

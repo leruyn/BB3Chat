@@ -1,0 +1,13 @@
+CREATE TABLE AppConfig (
+    key   TEXT NOT NULL PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
+upsert:
+INSERT OR REPLACE INTO AppConfig(key, value) VALUES (:key, :value);
+
+selectByKey:
+SELECT value FROM AppConfig WHERE key = :key;
+
+deleteByKey:
+DELETE FROM AppConfig WHERE key = :key;

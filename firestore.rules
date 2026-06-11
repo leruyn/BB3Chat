@@ -1,0 +1,132 @@
+rules_version = '2';
+
+// BB3Chat Firestore Security Rules — aligned with FirebaseMessageRepository schema.
+// All message bodies are AES-256-GCM encrypted client-side before write.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return request.auth.uid == uid;
+    }
+
+    function isMember(roomData) {
+      return request.auth.uid in roomData.memberUids;
+    }
+
+    function roomIsActive(roomData) {
+      return roomData.status == 'ACTIVE';
+    }
+
+    function roomDoc(roomId) {
+      return get(/databases/$(database)/documents/rooms/$(roomId)).data;
+    }
+
+    function validContentType(data) {
+      return data.contentType in ['TEXT', 'IMAGE', 'VOICE', 'CHUNKED_FILE', 'STICKER', 'SYSTEM'];
+    }
+
+    function hasRequiredMessageFields(data) {
+      return data.keys().hasAll([
+        'id', 'roomId', 'senderAlias', 'contentType', 'sentAt', 'status'
+      ]);
+    }
+
+    function hasContentPayload(data) {
+      return (data.contentType == 'TEXT'
+              && data.keys().hasAll(['encryptedBody', 'iv']))
+          || (data.contentType in ['IMAGE', 'VOICE', 'STICKER']
+              && data.keys().hasAll(['encryptedBase64', 'iv']))
+          || (data.contentType == 'CHUNKED_FILE'
+              && data.keys().hasAll(['totalChunks', 'chunkCollectionId']))
+          || (data.contentType == 'SYSTEM'
+              && data.keys().hasAll(['systemEventType']));
+    }
+
+    function payloadWithinSizeLimit(data) {
+      return (!('encryptedBody' in data) || data.encryptedBody.size() < 900000)
+          && (!('encryptedBase64' in data) || data.encryptedBase64.size() < 900000);
+    }
+
+    match /users/{uid} {
+      allow read, write: if isSignedIn() && isOwner(uid);
+    }
+
+    match /rooms/{roomId} {
+
+      allow read: if isSignedIn() && isMember(resource.data);
+
+      allow create: if isSignedIn()
+                    && isOwner(request.resource.data.creatorUid)
+                    && request.auth.uid in request.resource.data.memberUids
+                    && request.resource.data.memberUids.size() <= 5
+                    && request.resource.data.status == 'ACTIVE';
+
+      allow update: if isSignedIn()
+                    && resource.data.status == 'ACTIVE'
+                    && (
+                      (isMember(resource.data)
+                       && request.resource.data.diff(resource.data).affectedKeys()
+                          .hasOnly([
+                            'status', 'destroyedAt', 'destroyedBy',
+                            'lastActivityAt', 'lastMsgType'
+                          ]))
+                      ||
+                      (request.auth.uid in request.resource.data.memberUids
+                       && !(request.auth.uid in resource.data.memberUids)
+                       && request.resource.data.diff(resource.data).affectedKeys()
+                          .hasOnly(['memberUids'])
+                       && request.resource.data.memberUids.size() <= 5)
+                    );
+
+      allow delete: if isSignedIn()
+                    && isMember(resource.data)
+                    && resource.data.status == 'DESTROYED';
+
+      match /messages/{msgId} {
+
+        allow read: if isSignedIn()
+                    && isMember(roomDoc(roomId))
+                    && roomIsActive(roomDoc(roomId));
+
+        allow create: if isSignedIn()
+                      && isMember(roomDoc(roomId))
+                      && roomIsActive(roomDoc(roomId))
+                      && hasRequiredMessageFields(request.resource.data)
+                      && validContentType(request.resource.data)
+                      && hasContentPayload(request.resource.data)
+                      && payloadWithinSizeLimit(request.resource.data);
+
+        allow update: if isSignedIn()
+                      && isMember(roomDoc(roomId))
+                      && request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['readBy', 'status', 'isDestructTriggered']);
+
+        allow delete: if isSignedIn()
+                      && isMember(roomDoc(roomId));
+      }
+
+      match /typing/{uid} {
+        allow read, write: if isSignedIn()
+                           && isMember(roomDoc(roomId))
+                           && isOwner(uid);
+      }
+    }
+
+    match /fcm_tokens/{uid} {
+      allow read, write: if isSignedIn() && isOwner(uid);
+    }
+
+    match /intruder_log/{uid}/{docId} {
+      allow read, write: if isSignedIn() && isOwner(uid);
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
